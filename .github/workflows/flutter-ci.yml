@@ -1,4 +1,4 @@
-name: Flutter CI
+name: Flutter CI/CD
 
 on:
   push:
@@ -7,36 +7,66 @@ on:
     branches: [ main ]
 
 jobs:
-  build_and_test:
+  test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.x'   # You can change to 'stable' later
+          flutter-version: '3.29.x'
           channel: 'stable'
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Check code formatting
+      - name: Check formatting
         run: dart format --set-exit-if-changed .
 
-      - name: Analyze code
+      - name: Analyze
         run: flutter analyze
 
-      - name: Run unit tests
+      - name: Run tests
         run: flutter test
 
-      - name: Build Android APK
-        run: flutter build apk --debug
+  build-android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Upload APK Artifact
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.x'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Release AAB (Play Store)
+        run: flutter build appbundle --release
+
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 7
+
+  build-ios:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.x'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build iOS (Release)
+        run: flutter build ios --release --no-codesign
